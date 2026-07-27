@@ -1,8 +1,8 @@
 package me.cortex.voxy.client.config;
 
 import me.cortex.voxy.client.RenderStatistics;
-import me.cortex.voxy.compat.far.FarEntityClient;
 import me.cortex.voxy.common.util.cpu.CpuLayout;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -10,7 +10,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-@EventBusSubscriber(modid = "voxy")
+@EventBusSubscriber(modid = "voxy", value = Dist.CLIENT)
 public final class VoxyNeoForgeConfig {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
@@ -93,24 +93,6 @@ public final class VoxyNeoForgeConfig {
                      "Large values increase server/client load. Maximum: 127.")
             .defineInRange("requestDistance", 48, VoxyConfig.MIN_REQUEST_DISTANCE, VoxyConfig.MAX_REQUEST_DISTANCE);
 
-    private static final ModConfigSpec.BooleanValue ENABLE_FAR_PLAYER_RENDERING = BUILDER
-            .comment("Render far players with lightweight server snapshots.",
-                     "Multiplayer requires Voxy on the server; standalone SeeU takes precedence when installed.")
-            .define("enableFarPlayerRendering", true);
-
-    private static final ModConfigSpec.BooleanValue RENDER_FAR_PLAYER_NAMES = BUILDER
-            .comment("Render name tags above far-player proxies.")
-            .define("renderFarPlayerNames", true);
-
-    private static final ModConfigSpec.IntValue FAR_PLAYER_ANIMATION_DISTANCE = BUILDER
-            .comment("Maximum distance in blocks for far-player walk animation.",
-                     "Set to 0 to keep far proxies static and reduce CPU cost.")
-            .defineInRange("farPlayerAnimationDistance", 1024, 0, 32768);
-
-    private static final ModConfigSpec.BooleanValue SHARE_FAR_PLAYER_POSITION = BUILDER
-            .comment("Allow other Voxy clients on the same server to receive your far-player snapshot.")
-            .define("shareFarPlayerPosition", true);
-
     private static final ModConfigSpec.BooleanValue RENDER_STATISTICS = BUILDER
             .comment("Show render statistics in F3 debug screen",
                      "Displays LOD traversal counts, visible sections, and quad counts")
@@ -141,10 +123,6 @@ public final class VoxyNeoForgeConfig {
         VoxyConfig.CONFIG.earthCurveRatio = EARTH_CURVE_RATIO.get();
         VoxyConfig.CONFIG.enableExtendedRequestDistance = ENABLE_EXTENDED_REQUEST_DISTANCE.get();
         VoxyConfig.CONFIG.requestDistance = REQUEST_DISTANCE.get();
-        VoxyConfig.CONFIG.enableFarPlayerRendering = ENABLE_FAR_PLAYER_RENDERING.get();
-        VoxyConfig.CONFIG.renderFarPlayerNames = RENDER_FAR_PLAYER_NAMES.get();
-        VoxyConfig.CONFIG.farPlayerAnimationDistance = FAR_PLAYER_ANIMATION_DISTANCE.get();
-        VoxyConfig.CONFIG.shareFarPlayerPosition = SHARE_FAR_PLAYER_POSITION.get();
         VoxyConfig.CONFIG.sanitize();
 
         RenderStatistics.enabled = RENDER_STATISTICS.get();
@@ -169,10 +147,6 @@ public final class VoxyNeoForgeConfig {
         EARTH_CURVE_RATIO.set(VoxyConfig.CONFIG.earthCurveRatio);
         ENABLE_EXTENDED_REQUEST_DISTANCE.set(VoxyConfig.CONFIG.enableExtendedRequestDistance);
         REQUEST_DISTANCE.set(VoxyConfig.CONFIG.requestDistance);
-        ENABLE_FAR_PLAYER_RENDERING.set(VoxyConfig.CONFIG.enableFarPlayerRendering);
-        RENDER_FAR_PLAYER_NAMES.set(VoxyConfig.CONFIG.renderFarPlayerNames);
-        FAR_PLAYER_ANIMATION_DISTANCE.set(VoxyConfig.CONFIG.farPlayerAnimationDistance);
-        SHARE_FAR_PLAYER_POSITION.set(VoxyConfig.CONFIG.shareFarPlayerPosition);
 
         RenderStatistics.enabled = RENDER_STATISTICS.get();
     }
@@ -188,7 +162,6 @@ public final class VoxyNeoForgeConfig {
     public static void onConfigReload(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == SPEC) {
             syncToVoxyConfig();
-            FarEntityClient.sendHello();
         }
     }
 

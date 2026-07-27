@@ -2,6 +2,11 @@
 
 Neo-Voxy 是 Voxy 的非官方 NeoForge 移植与兼容性维护版本，当前同时支持 Minecraft **1.21.1** 与 **26.1.2**。项目版本为 **0.2.18-beta**。
 
+> [!IMPORTANT]
+> **1.21.1 版本是纯客户端模组，服务器无需安装 Neo-Voxy。**
+>
+> 客户端可以直接加入未安装 Neo-Voxy 的原版或 NeoForge 服务器。为避免引入服务端协议与周期扫描，原先需要服务端配合的“远距离玩家与乘骑物快照”已移除；地形 LOD、Sodium/Iris、圆形 LOD 淡入、Domum Ornamentum 和本地区块摄取不受影响。
+
 > [!CAUTION]
 > ## 光影兼容警告：不要重复启用 LOD 淡入
 >
@@ -30,7 +35,7 @@ Neo-Voxy 是 Voxy 的非官方 NeoForge 移植与兼容性维护版本，当前�
 | 无光影水体专项优化 | ✅ | — | 改善透明度、雾、水下和岸线表现 |
 | 可调树叶 LOD | ✅ | — | 性能、平衡和质量三种模式 |
 | 扩展区块请求 | ✅ | — | 单人游戏可逐步扩展远景区块请求 |
-| 远距离玩家与乘骑物 | ✅ | — | 使用轻量快照渲染远处玩家 |
+| 远距离玩家与乘骑物 | — | — | 已从纯客户端版本移除，避免要求服务器安装 |
 | Supplement / Lumisene Fluids | ✅ | — | 专用流体颜色、透明度和 LOD 表面处理 |
 | Domum Ornamentum | ✅ | — | 动态材质、颜色映射与轻量代理模型 |
 
@@ -68,7 +73,8 @@ Neo-Voxy 不再强制要求 Forgified Fabric API 作为独立前置。最终依�
 1. 安装对应版本的 Minecraft、NeoForge、Java 与 Sodium。
 2. 如需光影，安装表中对应版本的 Iris。
 3. 将 Neo-Voxy JAR 放入实例的 `mods` 文件夹。
-4. 首次测试前建议备份世界与旧 Voxy 缓存。
+4. **不要要求服务器安装 Neo-Voxy；它只需放在客户端。**
+5. 首次测试前建议备份世界与旧 Voxy 缓存。
 
 两个 Minecraft 版本的缓存和 JAR 不应混用。
 

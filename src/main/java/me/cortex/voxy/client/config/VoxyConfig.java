@@ -64,17 +64,9 @@ public class VoxyConfig {
     public String ssaoMode;
     public boolean useEnvironmentalFog = true;
     public String leafLodMode = "balanced";
-    public boolean enableFarPlayerRendering = true;
-    public boolean renderFarPlayerNames = true;
-    public int farPlayerAnimationDistance = 1024;
-    public boolean shareFarPlayerPosition = true;
 
     public int getRequestDistance() {
         return Math.clamp(this.requestDistance, MIN_REQUEST_DISTANCE, MAX_REQUEST_DISTANCE);
-    }
-
-    public int getFarEntityRenderDistanceBlocks() {
-        return Math.clamp(Math.round(this.sectionRenderDistance * 32.0f * 16.0f), 64, 32768);
     }
 
     public int getRenderPressureLevel() {
@@ -157,7 +149,6 @@ public class VoxyConfig {
         this.lodBoundaryFadeLength = Math.clamp(this.lodBoundaryFadeLength, 8, 64);
         this.lodBoundaryInset = Math.clamp(this.lodBoundaryInset, 8, 32);
         this.setLeafLodMode(this.getLeafLodMode());
-        this.farPlayerAnimationDistance = Math.clamp(this.farPlayerAnimationDistance, 0, 32768);
     }
 
     public void save() {

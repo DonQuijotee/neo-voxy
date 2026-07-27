@@ -7,7 +7,6 @@ import me.cortex.voxy.client.core.SSAO;
 import me.cortex.voxy.client.core.util.IrisUtil;
 import me.cortex.voxy.common.util.cpu.CpuLayout;
 import me.cortex.voxy.commonImpl.VoxyCommon;
-import me.cortex.voxy.compat.far.FarEntityClient;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPointForge;
 import net.caffeinemc.mods.sodium.api.config.ConfigState;
@@ -38,10 +37,9 @@ public class VoxyConfigMenu implements ConfigEntryPoint {
                         var instance = VoxyCommon.getInstance();
                         if (instance != null) {
                             instance.updateDedicatedThreads();
-                        }
+                            }
                     }, "voxy:enabled")
                             .register("voxy:iris_reload", IrisUtil::reload)
-                            .register("voxy:refresh_far_entities", FarEntityClient::sendHello)
                             .register("voxy:refresh_chunk_request", ()->{
                                 var minecraft = Minecraft.getInstance();
                                 if (minecraft.getConnection() != null) {
