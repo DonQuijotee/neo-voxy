@@ -33,7 +33,8 @@ public abstract class MixinBnbKineticVisuals {
             this.voxy$nextCheckTick = tick + 8 + ((pos.getX() ^ pos.getZ()) & 7);
             this.voxy$enclosed = KineticCull.enclosed(pos);
         }
-        boolean beyond = KineticCull.beyond(pos, ctx);
+        boolean beyond = KineticCull.beyond(
+                pos, ctx, ((AccessorAbstractVisualLevel) this).voxy$getLevel());
         if (beyond || this.voxy$enclosed) {
             if (!this.voxy$culled) {
                 this.voxy$culled = true;

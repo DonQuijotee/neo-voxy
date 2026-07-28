@@ -51,6 +51,7 @@ public abstract class MixinLevelRenderer implements IGetVoxyRenderSystem {
 
     @Override
     public void voxy$shutdownRenderer() {
+        me.cortex.voxy.client.core.compat.eclipticseasons.SeasonalSnowRefresher.cancelAndJoin();
         if (this.renderer != null) {
             this.renderer.shutdown();
             this.renderer = null;

@@ -60,9 +60,13 @@ public final class KineticCull {
     }
 
     //Flywheel visual path: the camera comes from the frame context.
-    public static boolean beyond(BlockPos pos, DynamicVisual.Context ctx) {
+    public static boolean beyond(BlockPos pos, DynamicVisual.Context ctx,
+                                 net.minecraft.world.level.Level visualLevel) {
         var cfg = VoxyConfig.CONFIG;
         if (!cfg.isRenderingEnabled() || !cfg.distantKinetics) {
+            return false;
+        }
+        if (visualLevel != Minecraft.getInstance().level) {
             return false;
         }
         //Ship-borne machines render natively, uncut: a ship is one connected drivetrain, and any

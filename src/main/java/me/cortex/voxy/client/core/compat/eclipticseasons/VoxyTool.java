@@ -5,19 +5,15 @@ import com.teamtea.eclipticseasons.client.util.ClientCon;
 import com.teamtea.eclipticseasons.common.core.map.MapChecker;
 import com.teamtea.eclipticseasons.config.CommonConfig;
 import me.cortex.voxy.client.config.VoxyConfig;
-import java.io.File;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.function.IntConsumer;
 import me.cortex.voxy.common.voxelization.ILightingSupplier;
 import me.cortex.voxy.common.voxelization.VoxelizedSection;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.common.world.WorldSection;
 import me.cortex.voxy.common.world.other.Mapper;
-import me.cortex.voxy.commonImpl.ImportManager;
 import me.cortex.voxy.commonImpl.VoxyInstance;
 import me.cortex.voxy.commonImpl.WorldIdentifier;
-import me.cortex.voxy.commonImpl.importers.WorldImporter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
@@ -33,7 +29,6 @@ import org.jetbrains.annotations.Nullable;
 
 public class VoxyTool {
     private static final int maxBlockId = 1048575;
-    public static ImportManager esImporter;
 
     public static boolean isVoxyTest() {
         return VoxyConfig.CONFIG.eclipticSeasonsSnowLod;
@@ -125,10 +120,6 @@ public class VoxyTool {
         return world == null ? null : VoxyTool.getWorldSection(world, section);
     }
 
-    public static void releaseImporter() {
-        esImporter = null;
-    }
-
     public static void tryUpdate() {
         if (!VoxyTool.isVoxyTest()) {
             return;
@@ -137,29 +128,15 @@ public class VoxyTool {
             return;
         }
         Level level = ClientCon.getUseLevel();
-        if (level == null || level.getGameTime() % 300L == 0L || !ClientCon.getAgent().isSnowChange() || esImporter != null) {
+        if (level == null || !ClientCon.getAgent().isSnowChange() || SeasonalSnowRefresher.isRunning()) {
             return;
         }
-        VoxyInstance instance = VoxyTool.getVoxyInstance();
-        if (instance == null) {
-            return;
-        }
-        WorldEngine engine = WorldIdentifier.ofEngine((Level)level);
-        if (engine == null) {
+        WorldEngine engine = WorldIdentifier.ofEngineNullable(level);
+        if (engine == null || !engine.isLive()) {
             return;
         }
         ClientCon.agent.setSnowChange(false);
-        esImporter = new VoxyESImportManager();
-        esImporter.makeAndRunIfNone(engine, () -> {
-            WorldImporter importer = new WorldImporter(engine, level, instance.getServiceManager(), instance.savingServiceRateLimiter);
-            String worldName = ClientCon.getAgent().getCurrentWorldName();
-            Path file = new File("saves").toPath().resolve(worldName);
-            if (!worldName.endsWith("region")) {
-                file = file.resolve("region");
-            }
-            importer.importRegionDirectoryAsync(file.toFile());
-            return importer;
-        });
+        SeasonalSnowRefresher.start(level, engine);
     }
 
     @Nullable
