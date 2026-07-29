@@ -8,6 +8,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -86,6 +87,8 @@ final class FarPlayerTracker {
         private float toVehicleYaw;
         private float fromVehiclePitch;
         private float toVehiclePitch;
+        private byte[] vehicleRenderData = new byte[0];
+        private int vehicleDataRevision;
         private int generation;
 
         TrackedPlayer(PlayerSnapshot snapshot, int generation) {
@@ -135,10 +138,14 @@ final class FarPlayerTracker {
 
         private void applyVehicle(VehicleSnapshot vehicle, boolean interpolate, long now) {
             if (vehicle == null) {
+                if (this.vehicleUuid != null) {
+                    this.vehicleDataRevision++;
+                }
                 this.vehicleUuid = null;
                 this.vehicleTypeId = null;
                 this.fromVehiclePosition = null;
                 this.toVehiclePosition = null;
+                this.vehicleRenderData = new byte[0];
                 return;
             }
             Vec3 position = new Vec3(vehicle.x(), vehicle.y(), vehicle.z());
@@ -157,6 +164,14 @@ final class FarPlayerTracker {
             this.vehicleUuid = vehicle.uuid();
             this.vehicleEntityId = vehicle.entityId();
             this.vehicleTypeId = vehicle.entityTypeId();
+            if (!same) {
+                this.vehicleRenderData = vehicle.renderData();
+                this.vehicleDataRevision++;
+            } else if (vehicle.renderData().length != 0
+                    && !Arrays.equals(this.vehicleRenderData, vehicle.renderData())) {
+                this.vehicleRenderData = vehicle.renderData();
+                this.vehicleDataRevision++;
+            }
             this.toVehiclePosition = position;
             this.toVehicleYaw = vehicle.yaw();
             this.toVehiclePitch = vehicle.pitch();
@@ -178,6 +193,8 @@ final class FarPlayerTracker {
         UUID vehicleUuid() { return this.vehicleUuid; }
         int vehicleEntityId() { return this.vehicleEntityId; }
         String vehicleTypeId() { return this.vehicleTypeId; }
+        byte[] vehicleRenderData() { return this.vehicleRenderData; }
+        int vehicleDataRevision() { return this.vehicleDataRevision; }
 
         Vec3 renderPosition(float progress) {
             return this.fromPosition.lerp(this.toPosition, progress);

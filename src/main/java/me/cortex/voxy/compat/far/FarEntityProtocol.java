@@ -12,9 +12,11 @@ import java.util.List;
 import java.util.UUID;
 
 public final class FarEntityProtocol {
-    public static final int VERSION = 6;
+    public static final int VERSION = 7;
     private static final int MAX_PLAYERS_PER_PACKET = 1024;
     private static final int MAX_STRING_BYTES = 32767;
+    public static final int MAX_VEHICLE_DATA_BYTES = 256 * 1024;
+    private static final byte[] EMPTY_BYTES = new byte[0];
 
     private FarEntityProtocol() {
     }
@@ -38,10 +40,20 @@ public final class FarEntityProtocol {
 
     public record VehicleSnapshot(
             UUID uuid, int entityId, String entityTypeId,
-            double x, double y, double z, float yaw, float pitch
+            double x, double y, double z, float yaw, float pitch,
+            byte[] renderData
     ) {
         public VehicleSnapshot {
             entityTypeId = entityTypeId == null ? "" : entityTypeId;
+            renderData = renderData == null ? EMPTY_BYTES : renderData;
+            if (renderData.length > MAX_VEHICLE_DATA_BYTES) {
+                throw new IllegalArgumentException("Far vehicle render data is too large: " + renderData.length);
+            }
+        }
+
+        public VehicleSnapshot withoutRenderData() {
+            return renderData.length == 0 ? this : new VehicleSnapshot(
+                    uuid, entityId, entityTypeId, x, y, z, yaw, pitch, EMPTY_BYTES);
         }
     }
 
@@ -66,6 +78,13 @@ public final class FarEntityProtocol {
 
         private static ItemSnapshot sanitize(ItemSnapshot item) {
             return item == null ? ItemSnapshot.EMPTY : item;
+        }
+
+        public PlayerSnapshot withVehicle(VehicleSnapshot replacement) {
+            return vehicle == replacement ? this : new PlayerSnapshot(
+                    uuid, name, x, y, z, bodyYaw, headYaw, pitch,
+                    sneaking, gliding, swimming,
+                    mainHand, offHand, feet, legs, chest, head, replacement);
         }
     }
 
@@ -197,14 +216,27 @@ public final class FarEntityProtocol {
         buf.writeDouble(vehicle.z());
         buf.writeFloat(vehicle.yaw());
         buf.writeFloat(vehicle.pitch());
+        writeVarInt(buf, vehicle.renderData().length);
+        buf.writeBytes(vehicle.renderData());
     }
 
     private static VehicleSnapshot decodeVehicle(ByteBuf buf) {
         return new VehicleSnapshot(
                 readUuid(buf), readVarInt(buf), readUtf(buf),
                 buf.readDouble(), buf.readDouble(), buf.readDouble(),
-                buf.readFloat(), buf.readFloat()
+                buf.readFloat(), buf.readFloat(),
+                readByteArray(buf, MAX_VEHICLE_DATA_BYTES)
         );
+    }
+
+    private static byte[] readByteArray(ByteBuf buf, int maximumLength) {
+        int length = readVarInt(buf);
+        if (length < 0 || length > maximumLength || length > buf.readableBytes()) {
+            throw new IllegalArgumentException("Invalid far-entity byte array length: " + length);
+        }
+        byte[] bytes = new byte[length];
+        buf.readBytes(bytes);
+        return bytes;
     }
 
     private static void writeUuid(ByteBuf buf, UUID uuid) {
