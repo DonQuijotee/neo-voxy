@@ -36,7 +36,10 @@ public class ClientSessionEvents {
     public static void sessionEnd() {
         synchronized (ClientSessionEvents.class) {
             //Minecraft can reach both disconnect and clearClientLevel for one leave operation.
-            if (!inSession || closingSession) return;
+            //Do not use inSession as the only ownership signal here.  A failed/partially completed
+            //disconnect can clear it before the native storage handle is gone, and the world-selection
+            //screen may then try to delete the save while RocksDB still owns <world>/voxy/LOCK.
+            if (closingSession || (!inSession && VoxyCommon.getInstance() == null)) return;
             inSession = false;
             closingSession = true;
         }

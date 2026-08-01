@@ -17,6 +17,7 @@ import java.util.Set;
 public class CommonVoxyMixinPlugin implements IMixinConfigPlugin {
     private boolean sableInstalled;
     private boolean createInstalled;
+    private boolean simpleBackupsInstalled;
 
     private static boolean modOnLoadingList(String id) {
         try {
@@ -38,11 +39,15 @@ public class CommonVoxyMixinPlugin implements IMixinConfigPlugin {
     public void onLoad(String mixinPackage) {
         sableInstalled = modOnLoadingList("sable");
         createInstalled = modOnLoadingList("create");
+        simpleBackupsInstalled = modOnLoadingList("simplebackups");
     }
 
     @Override
     public List<String> getMixins() {
         List<String> mixins = new ArrayList<>();
+        if (simpleBackupsInstalled) {
+            mixins.add("simplebackups.MixinBackupThread");
+        }
         if (sableInstalled) {
             mixins.add("minecraft.MixinServerLevel");
             if (FMLLoader.getDist() == Dist.CLIENT) {

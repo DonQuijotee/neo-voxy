@@ -21,6 +21,7 @@ layout(location = 0) in flat uvec4 interData;
 #ifndef USE_NV_BARRY
 layout(location = 1) in vec2 uv;
 #endif
+layout(location = 2) in float boundaryDistanceSquared;
 
 #ifdef DEBUG_RENDER
 layout(location = 7) in flat uint quadDebug;
@@ -78,8 +79,12 @@ bool useBalancedLeafCutout() {
     return ((interData.x >> 1u) & 1u) == 1u;
 }
 
-bool suppressLavaInBoundaryFade() {
+bool useLavaBoundary() {
     return ((interData.x >> 7u) & 1u) == 1u;
+}
+
+bool useIndependentWaterBoundary() {
+    return ((interData.w >> 11u) & 1u) == 1u;
 }
 
 vec2 varyBalancedLeafUV(vec2 localUV, vec2 tile, out uint transform) {
@@ -152,7 +157,13 @@ vec4 computeColour(vec2 texturePos, vec4 colour) {
 
 
 void main() {
-    if (suppressLavaInBoundaryFade()) {
+    // Partial/cutout/translucent vanilla models leave holes in the source depth buffer. Stencil alone
+    // would let their simplified LOD proxy show through those holes even deep inside the vanilla area.
+    // Clip geometrically at the exact fade start, then allow every model to fill the real transition.
+    // Water is exempt because it deliberately retains its independent translucent chunk boundary.
+    if (circularLodBoundaryEnabled > 0.5
+            && !useIndependentWaterBoundary()
+            && boundaryDistanceSquared < lodBoundaryFadeStart * lodBoundaryFadeStart) {
         discard;
         return;
     }
@@ -237,7 +248,9 @@ void main() {
     float cutoutAlpha = useBalancedLeafCutout()
             ? colour.a
             : textureLod(blockModelAtlas, texPos, 0).a;
-    float cutoutThreshold = useBalancedLeafCutout() ? 0.42f : 0.1f;
+    // Mip-filtered leaf alpha loses coverage much faster than the base texture. A lower balanced
+    // threshold keeps the canopy density stable as the circular ownership mask moves over it.
+    float cutoutThreshold = useBalancedLeafCutout() ? 0.18f : 0.1f;
     colour.a = 1.0f;
     if (useDiscard() && cutoutAlpha <= cutoutThreshold) {
     #else

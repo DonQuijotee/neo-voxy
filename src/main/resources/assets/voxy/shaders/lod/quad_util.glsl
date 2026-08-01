@@ -35,7 +35,8 @@ struct QuadData {
 };
 
 uint makeQuadFlags(uint faceData, uint modelId, ivec2 quadSize, const in BlockModel model, uint face) {
-    //bit: 0-use cutout, 1-balanced leaf cutout, 2|3-tint state, 4|6-face, 8|11-width, 12|15-height, 16|31-model id
+    //bit: 0-use cutout, 1-balanced leaf cutout, 2|3-tint state, 4|6-face,
+    //7-lava boundary, 8|11-width, 12|15-height, 16|31-model id
     uint flags = 0;
 
     flags |= modelId<<16;//Model id
@@ -47,6 +48,7 @@ uint makeQuadFlags(uint faceData, uint modelId, ivec2 quadSize, const in BlockMo
     }
 
     flags |= modelUsesBalancedLeafCutout(model) ? 2u : 0u;
+    flags |= modelIsLava(model) ? (1u << 7u) : 0u;
     flags |= faceTintState(faceData)<<2;
     flags |= face<<4;//Face
 
@@ -110,6 +112,10 @@ uvec3 makeRemainingAttributes(const in BlockModel model, const in Quad quad, uin
     attributes.z = addin|(face<<8);
     #endif
 
+    // Bit 11 is outside the packed face (8..10) and additive-light (0..7) fields. Water keeps the
+    // original independent translucent boundary; all other models may use the circular inner clip.
+    attributes.z |= modelUsesFluidDatum(model) ? (1u << 11u) : 0u;
+
     return attributes;
 }
 
@@ -172,13 +178,6 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     quad.lodScale = lodScale;
     quad.axis = face>>1;
     quad.basePoint = (quadStart*lodScale)+vec3(baseSection<<5);
-    if (generateAttributes && circularLodBoundaryEnabled > 0.5
-            && modelIsLava(model)
-            && length((quad.basePoint - cameraSubPos).xz) < lodBoundaryFadeEnd) {
-        // Bit 7 is unused by the packed fragment flags. Suppress only the LOD lava quad inside the
-        // circular transition; it becomes eligible immediately outside the band.
-        quad.attributeData.x |= 1u << 7u;
-    }
     #ifdef USE_SINGLE_TRI
     quad.quadSizeAddin = (faceSize.yw + (quadSize - 1)*2);
     #else
@@ -187,10 +186,13 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     quad.uvCorner = faceSize.xz;
 }
 
-vec4 getQuadCornerPos(in QuadData quad, uint cornerId) {
+vec3 getQuadCornerPoint(in QuadData quad, uint cornerId) {
     vec2 cornerMask = vec2((cornerId>>1)&1u, cornerId&1u)*quad.lodScale;
-    vec3 point = quad.basePoint + swizzelDataAxis(quad.axis,vec3(quad.quadSizeAddin*cornerMask,0));
-    vec4 pos = MVP * vec4(point, 1.0f);
+    return quad.basePoint + swizzelDataAxis(quad.axis,vec3(quad.quadSizeAddin*cornerMask,0));
+}
+
+vec4 getQuadCornerPos(in QuadData quad, uint cornerId) {
+    vec4 pos = MVP * vec4(getQuadCornerPoint(quad, cornerId), 1.0f);
     pos.xy += taaOffset*pos.w;
     return pos;
 }

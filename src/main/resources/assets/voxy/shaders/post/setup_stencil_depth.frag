@@ -10,26 +10,27 @@ layout(location = 3) uniform mat4 dstProjection;
 layout(location = 4) uniform vec4 depthRemap;
 layout(location = 6) uniform float lodBoundaryFadeStart;
 layout(location = 7) uniform float lodBoundaryFadeEnd;
+layout(location = 8) uniform ivec3 cameraBlockOrigin;
+layout(location = 9) uniform vec3 cameraFraction;
 layout(location = 10) uniform int boundaryGuardPass;
 
 #import <voxy:util/depthutils.glsl>
 
 in vec2 UV;
 
-const int BAYER_8X8[64] = int[](
-     0, 48, 12, 60,  3, 51, 15, 63,
-    32, 16, 44, 28, 35, 19, 47, 31,
-     8, 56,  4, 52, 11, 59,  7, 55,
-    40, 24, 36, 20, 43, 27, 39, 23,
-     2, 50, 14, 62,  1, 49, 13, 61,
-    34, 18, 46, 30, 33, 17, 45, 29,
-    10, 58,  6, 54,  9, 57,  5, 53,
-    42, 26, 38, 22, 41, 25, 37, 21
-);
-
-float orderedDither8x8(ivec2 pixel) {
-    ivec2 p = pixel & ivec2(7);
-    return (float(BAYER_8X8[p.y * 8 + p.x]) + 0.5) * (1.0 / 64.0);
+float stableWorldDither(vec3 cameraRelativePosition) {
+    // An eighth-block 3-D grid works on horizontal and vertical faces alike. Integer hashing avoids
+    // trigonometry and, unlike screen-space Bayer noise, remains attached to the same world surface
+    // while the camera moves.
+    ivec3 cell = cameraBlockOrigin * 8
+            + ivec3(floor((cameraRelativePosition + cameraFraction) * 8.0));
+    uint hash = uint(cell.x) * 0x8da6b343u;
+    hash ^= uint(cell.y) * 0xd8163841u;
+    hash ^= uint(cell.z) * 0xcb1ab31fu;
+    hash ^= hash >> 16u;
+    hash *= 0x7feb352du;
+    hash ^= hash >> 15u;
+    return (float(hash & 1023u) + 0.5) * (1.0 / 1024.0);
 }
 
 float projectDepth(vec3 cameraRelativePosition) {
@@ -55,10 +56,17 @@ void main() {
     float lodCoverage = 0.0;
     float ditherValue = 1.0;
     bool fadeEnabled = lodBoundaryFadeEnd > lodBoundaryFadeStart;
-    if (fadeEnabled && horizontalDistance > lodBoundaryFadeStart) {
+    if (fadeEnabled
+            && horizontalDistance > lodBoundaryFadeStart
+            && horizontalDistance < lodBoundaryFadeEnd) {
         lodCoverage = smoothstep(lodBoundaryFadeStart,
                 lodBoundaryFadeEnd, horizontalDistance);
-        ditherValue = orderedDither8x8(ivec2(gl_FragCoord.xy));
+        // Delay most of the texture handoff until the outer half without introducing a second hard
+        // radius. This reduces early simplified textures on stairs and glass while preserving coverage.
+        lodCoverage *= lodCoverage;
+        ditherValue = stableWorldDither(cameraRelative.xyz);
+    } else if (fadeEnabled && horizontalDistance >= lodBoundaryFadeEnd) {
+        lodCoverage = 1.0;
     }
 
     if (boundaryGuardPass != 0) {
