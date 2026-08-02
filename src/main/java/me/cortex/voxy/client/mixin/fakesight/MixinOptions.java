@@ -22,9 +22,11 @@ public abstract class MixinOptions {
                 || !VoxyConfig.CONFIG.isRenderingEnabled()) return;
 
         ClientInformation current = cir.getReturnValue();
-        if (current == null || current.viewDistance() == VoxyConfig.CONFIG.getRequestDistance()) return;
+        if (current == null) return;
+        int requestDistance = Math.max(current.viewDistance(), VoxyConfig.CONFIG.getRequestDistance());
+        if (current.viewDistance() == requestDistance) return;
         cir.setReturnValue(new ClientInformation(
-                current.language(), VoxyConfig.CONFIG.getRequestDistance(), current.chatVisibility(),
+                current.language(), requestDistance, current.chatVisibility(),
                 current.chatColors(), current.modelCustomisation(), current.mainHand(),
                 current.textFilteringEnabled(), current.allowsListing()));
     }

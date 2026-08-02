@@ -20,8 +20,7 @@ public abstract class MixinChunkMap {
     private int voxy$extendIntegratedServerLimit(int vanillaLimit) {
         if (VoxyConfig.CONFIG.enableExtendedRequestDistance
                 && VoxyConfig.CONFIG.isRenderingEnabled()) {
-            // The internal tracking radius is one chunk larger than the
-            // user-facing request distance.
+            // ChunkMap tracks one extra boundary ring.
             return Math.max(vanillaLimit, VoxyConfig.MAX_REQUEST_DISTANCE + 1);
         }
         return vanillaLimit;

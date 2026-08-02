@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Applies Voxy's complementary ownership dither to Iris cutouts and shadow casters. */
+/** Applies Voxy's complementary ownership dither to Iris shadow casters. */
 @Mixin(value = SodiumPrograms.class, remap = false)
 public abstract class MixinSodiumShadowBoundary {
     private static final String MARKER = "voxy_shadow_boundary_distance";
@@ -24,12 +24,11 @@ public abstract class MixinSodiumShadowBoundary {
     private void voxy$fadeShadowCasters(String passName,
                                         Map<PatchShaderType, String> transformed,
                                         CallbackInfoReturnable<Map<PatchShaderType, GlShader>> cir) {
-        // Solid terrain is naturally replaced by Voxy in its selected stencil pixels. Cutout
-        // vegetation can leave holes in which the already-populated Iris G-buffer survives, so it
-        // needs the complementary discard explicitly. Translucent fluids deliberately stay on the
-        // original chunk handoff and are not patched here.
-        if (!passName.equals("shadow") && !passName.equals("shadow_cutout")
-                && !passName.equals("terrain_cutout")) {
+        // Do not rewrite terrain_cutout. A single Iris cutout pass contains leaves, grass and many
+        // modded models, so it cannot identify leaves without pack-specific attributes. Dithering
+        // that whole pass made canopies disappear before their atomic LOD handoff. Leaving cutout
+        // colour untouched is both cheaper and substantially safer for unknown shader packs.
+        if (!passName.equals("shadow") && !passName.equals("shadow_cutout")) {
             return;
         }
 
@@ -51,7 +50,7 @@ public abstract class MixinSodiumShadowBoundary {
         String renamedVertex = renameMain(vertex);
         String renamedFragment = renameMain(fragment);
         if (renamedVertex == null || renamedFragment == null) {
-            warnOnce("Could not add the Voxy boundary fade to an Iris terrain shader");
+            warnOnce("Could not add the Voxy boundary fade to an Iris shadow shader");
             return;
         }
 

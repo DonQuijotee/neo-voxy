@@ -68,6 +68,35 @@ public class ActiveSectionTracker {
         return this.acquire(WorldEngine.getWorldSectionId(lvl, x, y, z), nullOnEmpty);
     }
 
+    /** Cache-only acquire for render-thread callers; it never joins an in-flight load. */
+    public WorldSection acquireIfCached(long key) {
+        int index = this.getCacheArrayIndex(key);
+        var cache = this.loadedSectionCache[index];
+        final var lock = this.locks[index];
+        long stamp = lock.readLock();
+        try {
+            VolatileHolder<WorldSection> holder = cache.get(key);
+            if (holder != null) {
+                WorldSection section = holder.obj;
+                if (section != null) {
+                    section.acquire();
+                    return section;
+                }
+                return null;
+            }
+        } finally {
+            lock.unlockRead(stamp);
+        }
+        boolean inLru;
+        long lruStamp = this.lruLock.readLock();
+        try {
+            inLru = this.lruSecondaryCache.containsKey(key);
+        } finally {
+            this.lruLock.unlockRead(lruStamp);
+        }
+        return inLru ? this.acquire(key, true) : null;
+    }
+
     public WorldSection acquire(long key, boolean nullOnEmpty) {
         //TODO: add optional verification check to ensure this (or other critical systems) arnt being called on the render or server thread
         if (this.engine != null) this.engine.lastActiveTime = System.currentTimeMillis();
@@ -310,22 +339,27 @@ public class ActiveSectionTracker {
 
             WorldSection aa = null;
             if (sec != null) {
-                long stamp2 = this.lruLock.writeLock();
-                try {
+                if ((hints & WorldSection.RELEASE_HINT_DONT_CACHE) != 0) {
                     lock.unlockWrite(stamp);
                     stamp = 0;
-                    WorldSection a = this.lruSecondaryCache.put(section.key, section);
-                    if (a != null) {
-                        throw new IllegalStateException("duplicate sections in cache is impossible");
+                    aa = sec;
+                } else {
+                    long stamp2 = this.lruLock.writeLock();
+                    try {
+                        lock.unlockWrite(stamp);
+                        stamp = 0;
+                        WorldSection a = this.lruSecondaryCache.put(section.key, section);
+                        if (a != null) {
+                            throw new IllegalStateException("duplicate sections in cache is impossible");
+                        }
+                        //If cache is bigger than its ment to be, remove the least recently used and free it
+                        if (this.lruSize < this.lruSecondaryCache.size()) {
+                            aa = this.lruSecondaryCache.removeFirst();
+                        }
+                    } finally {
+                        this.lruLock.unlockWrite(stamp2);
                     }
-                    //If cache is bigger than its ment to be, remove the least recently used and free it
-                    if (this.lruSize < this.lruSecondaryCache.size()) {
-                        aa = this.lruSecondaryCache.removeFirst();
-                    }
-                } finally {
-                    this.lruLock.unlockWrite(stamp2);
                 }
-
             } else {
                 lock.unlockWrite(stamp);
                 stamp = 0;
