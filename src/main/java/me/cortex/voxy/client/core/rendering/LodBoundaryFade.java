@@ -17,6 +17,7 @@ public final class LodBoundaryFade {
     private static int cachedInset;
     private static int cachedBuffer;
     private static boolean cachedSubmerged;
+    private static boolean cachedDetachedCamera;
     private static Distances cachedDistances = DISABLED;
 
     private LodBoundaryFade() {
@@ -30,7 +31,8 @@ public final class LodBoundaryFade {
 
     public static Distances getDistances() {
         VoxyConfig config = VoxyConfig.CONFIG;
-        int renderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
+        Minecraft minecraft = Minecraft.getInstance();
+        int renderDistance = minecraft.options.getEffectiveRenderDistance();
         boolean enabled = config.enableLodBoundaryFade;
         int length = config.lodBoundaryFadeLength;
         int inset = config.lodBoundaryInset;
@@ -40,15 +42,18 @@ public final class LodBoundaryFade {
         // a fluid lets opaque LOD replace the water column before its surface can be composited.
         // Fall back to Voxy's original chunk handoff underwater; this is a single camera-state read
         // per frame and avoids adding any world scans or fluid-specific draw passes.
-        boolean submerged = Minecraft.getInstance().gameRenderer.getMainCamera().getFluidInCamera()
-                != FogType.NONE;
+        var camera = minecraft.gameRenderer.getMainCamera();
+        boolean submerged = camera.getFluidInCamera() != FogType.NONE;
+        boolean detachedCamera = minecraft.player != null
+                && camera.getPosition().distanceToSqr(minecraft.player.position()) > 64.0;
 
         if (renderDistance == cachedRenderDistance
                 && enabled == cachedEnabled
                 && length == cachedLength
                 && inset == cachedInset
                 && buffer == cachedBuffer
-                && submerged == cachedSubmerged) {
+                && submerged == cachedSubmerged
+                && detachedCamera == cachedDetachedCamera) {
             return cachedDistances;
         }
 
@@ -58,9 +63,13 @@ public final class LodBoundaryFade {
         cachedInset = inset;
         cachedBuffer = buffer;
         cachedSubmerged = submerged;
+        cachedDetachedCamera = detachedCamera;
 
         float vanillaDistance = renderDistance * 16.0f;
-        if (!enabled || submerged) {
+        // Free-camera mods move Camera without moving the player/chunk loading centre. A circular
+        // camera-centred cutout would then reserve empty space for vanilla chunks that are not there.
+        // The depth-based legacy handoff follows the chunks actually rendered and is safe here.
+        if (!enabled || submerged || detachedCamera) {
             return cachedDistances = new Distances(vanillaDistance, vanillaDistance);
         }
 
